@@ -10,7 +10,7 @@ const LoginScreen = ({navigation}) => {
   const keyboardVerticalOffset = Platform.OS === 'ios' ? 40 : 0;
 
   return (
-    <SafeAreaView style={{flex: 1}}>
+    <SafeAreaView style={{flex: 1, backgroundColor: colors.background}}>
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : null}
         style={{flex: 1}}
@@ -36,9 +36,10 @@ const LoginScreen = ({navigation}) => {
               }}>
               <Text
                 style={{
-                  fontSize: 24,
+                  fontSize: 22,
                   fontWeight: '600',
                   color: colors.onBackground,
+                  fontFamily: 'Montserrat-Bold',
                 }}>
                 Ustaw hasło do notatnika
               </Text>

@@ -20,6 +20,7 @@ const UIButton = ({color, style, label, onPress}) => {
           fontSize: 18,
           paddingVertical: 12,
           textTransform: Platform.OS === 'ios' ? 'none' : 'uppercase',
+          fontFamily: 'Montserrat-medium',
         }}>
         {label}
       </Text>
