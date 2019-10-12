@@ -1,13 +1,55 @@
-import React, {useState} from 'react';
-import {View, Text, TouchableOpacity, KeyboardAvoidingView} from 'react-native';
+import React, {useState, useEffect} from 'react';
+import {View, Text, KeyboardAvoidingView} from 'react-native';
 import {colors} from '../constants/colors';
 import {SafeAreaView} from 'react-navigation';
 import UIInput from '../components/UIInput';
 import UIButton from '../components/UIButton';
+import {vh} from '../constants/sheet';
+import AsyncStorage from '@react-native-community/async-storage';
 
 const LoginScreen = ({navigation}) => {
   const [password, setPassword] = useState('');
+  const [registered, setRegistered] = useState(false);
+  const [error, setError] = useState('');
+
   const keyboardVerticalOffset = Platform.OS === 'ios' ? 40 : 0;
+
+  useEffect(() => {
+    AsyncStorage.getItem('$password').then(password => {
+      if (password) {
+        setRegistered(true);
+      }
+    });
+  }, []);
+  useEffect(() => {
+    if (error && password.length > 0) {
+      setError('');
+    }
+  }, [password]);
+
+  const _setPassword = async () => {
+    try {
+      await AsyncStorage.setItem('$password', password);
+      navigation.navigate('List');
+    } catch (err) {
+      console.log(err);
+    }
+  };
+
+  const _compare = async () => {
+    try {
+      const savedPassword = await AsyncStorage.getItem('$password');
+
+      if (savedPassword === password) {
+        navigation.navigate('List');
+      } else {
+        setError('Hasło nieprawidłowe');
+        setPassword('');
+      }
+    } catch (err) {
+      console.log(err);
+    }
+  };
 
   return (
     <SafeAreaView style={{flex: 1, backgroundColor: colors.background}}>
@@ -41,25 +83,49 @@ const LoginScreen = ({navigation}) => {
                   color: colors.onBackground,
                   fontFamily: 'Montserrat-Bold',
                 }}>
-                Ustaw hasło do notatnika
+                {registered ? 'Wprowadź hasło' : 'Ustaw hasło do notatnika'}
               </Text>
               <View style={{width: '100%', marginTop: 30}}>
                 <UIInput
-                  color={colors.primaryVariant}
+                  color={error ? colors.error : colors.primaryVariant}
                   value={password}
                   setValue={setPassword}
                   secure
+                  autoFocus
                 />
+                {error ? (
+                  <Text
+                    style={{
+                      color: colors.error,
+                      fontFamily: 'Montserrat-Regular',
+                      fontSize: 3 * vh,
+                      marginTop: 1 * vh,
+                      textAlign: 'center',
+                    }}>
+                    {error}
+                  </Text>
+                ) : null}
               </View>
             </View>
             <View
               style={{
-                width: '100%',
-                alignItems: 'center',
+                flex: 1,
                 justifyContent: 'center',
-                flex: 3,
+                width: '100%',
               }}>
-              <UIButton color={colors.primaryVariant} label="Dalej" />
+              <View
+                style={{
+                  width: '100%',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  height: 7 * vh,
+                }}>
+                <UIButton
+                  color={colors.primaryVariant}
+                  label="Dalej"
+                  onPress={registered ? _compare : _setPassword}
+                />
+              </View>
             </View>
           </View>
         </View>

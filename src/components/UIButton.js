@@ -10,6 +10,7 @@ const UIButton = ({color, style, label, onPress}) => {
         alignItems: 'center',
         justifyContent: 'center',
         borderRadius: 25,
+        flex: 1,
         ...style,
       }}
       onPress={onPress}>
