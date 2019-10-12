@@ -15,7 +15,7 @@ const LoginScreen = ({navigation}) => {
   const keyboardVerticalOffset = Platform.OS === 'ios' ? 40 : 0;
 
   useEffect(() => {
-    AsyncStorage.getItem('$password').then(password => {
+    AsyncStorage.getItem('@password').then(password => {
       if (password) {
         setRegistered(true);
       }
@@ -29,7 +29,7 @@ const LoginScreen = ({navigation}) => {
 
   const _setPassword = async () => {
     try {
-      await AsyncStorage.setItem('$password', password);
+      await AsyncStorage.setItem('@password', password);
       navigation.navigate('List');
     } catch (err) {
       console.log(err);
@@ -38,7 +38,7 @@ const LoginScreen = ({navigation}) => {
 
   const _compare = async () => {
     try {
-      const savedPassword = await AsyncStorage.getItem('$password');
+      const savedPassword = await AsyncStorage.getItem('@password');
 
       if (savedPassword === password) {
         navigation.navigate('List');
