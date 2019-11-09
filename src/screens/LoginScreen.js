@@ -5,7 +5,28 @@ import {SafeAreaView} from 'react-navigation';
 import UIInput from '../components/UIInput';
 import UIButton from '../components/UIButton';
 import {vh} from '../constants/sheet';
-import AsyncStorage from '@react-native-community/async-storage';
+import bcrypt from 'react-native-bcrypt';
+import isaac from 'isaac';
+import SecureStorage, {
+  ACCESSIBLE,
+  ACCESS_CONTROL,
+  AUTHENTICATION_TYPE,
+} from 'react-native-secure-storage';
+
+export const config = {
+  // accessControl: ACCESS_CONTROL.BIOMETRY_ANY_OR_DEVICE_PASSCODE,
+  // accessible: ACCESSIBLE.WHEN_UNLOCKED,
+  accessible: ACCESSIBLE.WHEN_UNLOCKED_THIS_DEVICE_ONLY,
+  // authenticationPrompt: 'auth with yourself',
+  // service: 'example',
+  // authenticateType: AUTHENTICATION_TYPE.BIOMETRICS,
+};
+
+bcrypt.setRandomFallback(len => {
+  const buf = new Uint8Array(len);
+
+  return buf.map(() => Math.floor(isaac.random() * 256));
+});
 
 const LoginScreen = ({navigation}) => {
   const [password, setPassword] = useState('');
@@ -16,7 +37,7 @@ const LoginScreen = ({navigation}) => {
 
   // Sprawdzenie czy uzytkownik juz ustawił hasło
   useEffect(() => {
-    AsyncStorage.getItem('@password').then(password => {
+    SecureStorage.getItem('@password', config).then(password => {
       if (password) {
         setRegistered(true);
       }
@@ -31,41 +52,43 @@ const LoginScreen = ({navigation}) => {
   }, [password]);
 
   // Metoda zapisująca hasło
-  const _setPassword = async () => {
-    try {
-      // Zapisanie hasła w pamięci urządzenia pod nazwą @password
-      await AsyncStorage.setItem('@password', password);
-
-      // Przeniesienie na ekran notatek jeśli hasło zostanie zapisane
-      navigation.navigate('List');
-    } catch (err) {
-      // Ustawienie błędu
-      setError(err);
-    }
+  const _setPassword = () => {
+    // Hashowanie hasła
+    bcrypt.hash(password, 10, async (err, hash) => {
+      if (err) {
+        setError(err);
+      }
+      try {
+        // Zapisanie hasha
+        await SecureStorage.setItem('@password', hash, config);
+        navigation.navigate('List');
+      } catch (e) {
+        setError(e);
+      }
+    });
   };
 
   // Metoda sprawdzająca czy podane hasło jest prawidłowe
   const _compare = async () => {
     try {
-      // Pobranie hasła zapisanego w pamięci urządzenia
-      const savedPassword = await AsyncStorage.getItem('@password');
+      // Pobranie hasha
+      const hash = await SecureStorage.getItem('@password', config);
 
-      // Porównanie
-      if (savedPassword === password) {
-        // Przeniesienie na ekran notatek jeśli hasło
-        // jest prawidłowe
-        navigation.navigate('List');
-      } else {
-        // Ustawienie błędu jeśli podane i zapisane
-        // hasło się róznią
-        setError('Hasło nieprawidłowe');
-
-        // Wyczyszczenie wpisanego hasła w inpucie
-        setPassword('');
-      }
-    } catch (err) {
-      // Ustawienie błędu
-      setError(err);
+      // Porównanie haseł
+      bcrypt.compare(password, hash, (err, matched) => {
+        if (err) {
+          setError(err);
+        }
+        if (matched) {
+          // Przekierowanie gdy hasło prawidłowe
+          navigation.navigate('List');
+        } else {
+          setError('Hasło nieprawidłowe');
+          setPassword('');
+        }
+      });
+    } catch (e) {
+      setError(e);
     }
   };
 

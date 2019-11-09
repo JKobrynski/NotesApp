@@ -18,7 +18,6 @@ const NotesList = ({navigation}) => {
   const [title, setTitle] = useState('Moja notatka');
   const [note, setNote] = useState('');
   const [visible, setVisible] = useState(false);
-
   const _titleInput = useRef(null);
   const _noteInput = useRef(null);
 

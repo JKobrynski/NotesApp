@@ -13,7 +13,9 @@ import {vh, vw} from '../constants/sheet';
 import Icon from 'react-native-vector-icons/Ionicons';
 import {TextInput} from 'react-native-gesture-handler';
 import UIButton from '../components/UIButton';
-import AsyncStorage from '@react-native-community/async-storage';
+import bcrypt from 'react-native-bcrypt';
+import {config} from './LoginScreen';
+import SecureStorage from 'react-native-secure-storage';
 
 const SettingsScreen = ({navigation}) => {
   const [previous, setPrevious] = useState('');
@@ -57,32 +59,38 @@ const SettingsScreen = ({navigation}) => {
   const _checkPassword = async () => {
     try {
       // Pobranie hasła z pamięci urządzenia
-      const savedPassword = await AsyncStorage.getItem('@password');
+      // const savedPassword = await AsyncStorage.getItem('@password');
+      const savedPassword = await SecureStorage.getItem('@password', config);
 
-      // Porównanie haseł
-      if (savedPassword === previous) {
-        // Sukces
-        setCorrect(true);
-      } else {
-        // Ustawienie błędu jeśli hasła róznią się
-        setError('Hasło nieprawidłowe');
-        setPrevious('');
-      }
+      bcrypt.compare(previous, savedPassword, (err, matched) => {
+        if (err) {
+          setError(err);
+        }
+        if (matched) {
+          setCorrect(true);
+        } else {
+          setError('Hasło nieprawidłowe');
+          setPrevious('');
+        }
+      });
     } catch (err) {
       setError(err);
     }
   };
 
   // Metoda zapisująca nowe hasło w pamięci urządzenia
-  const _updatePassword = async () => {
-    try {
-      AsyncStorage.setItem('@password', updated).then(() => {
-        // Sukces
+  const _updatePassword = () => {
+    bcrypt.hash(updated, 10, async (err, hash) => {
+      if (err) {
+        setError(err);
+      }
+      try {
+        await SecureStorage.setItem('@password', hash, config);
         setSuccess(true);
-      });
-    } catch (err) {
-      setError(err);
-    }
+      } catch (e) {
+        setError(e);
+      }
+    });
   };
 
   return (
