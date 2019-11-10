@@ -1,5 +1,12 @@
 import React, {useState, useEffect} from 'react';
-import {View, Text, KeyboardAvoidingView, StyleSheet} from 'react-native';
+import {
+  View,
+  Text,
+  KeyboardAvoidingView,
+  StyleSheet,
+  ActivityIndicator,
+  Platform,
+} from 'react-native';
 import {colors} from '../constants/colors';
 import {SafeAreaView} from 'react-navigation';
 import UIInput from '../components/UIInput';
@@ -12,11 +19,12 @@ import SecureStorage, {
   ACCESS_CONTROL,
   AUTHENTICATION_TYPE,
 } from 'react-native-secure-storage';
+import {genRandomKey} from '../utils/encrypt';
 
 export const config = {
   // accessControl: ACCESS_CONTROL.BIOMETRY_ANY_OR_DEVICE_PASSCODE,
-  // accessible: ACCESSIBLE.WHEN_UNLOCKED,
-  accessible: ACCESSIBLE.WHEN_UNLOCKED_THIS_DEVICE_ONLY,
+  accessible: ACCESSIBLE.WHEN_UNLOCKED,
+  // accessControl: ACCESS_CONTROL.APPLICATION_PASSWORD,
   // authenticationPrompt: 'auth with yourself',
   // service: 'example',
   // authenticateType: AUTHENTICATION_TYPE.BIOMETRICS,
@@ -32,6 +40,7 @@ const LoginScreen = ({navigation}) => {
   const [password, setPassword] = useState('');
   const [registered, setRegistered] = useState(false);
   const [error, setError] = useState('');
+  const [checking, setChecking] = useState(true);
 
   const keyboardVerticalOffset = Platform.OS === 'ios' ? 40 : 0;
 
@@ -42,6 +51,14 @@ const LoginScreen = ({navigation}) => {
         setRegistered(true);
       }
     });
+    SecureStorage.getItem('@encryptionKey', config).then(key => {
+      if (!key) {
+        genRandomKey().then(key => {
+          SecureStorage.setItem('@encryptionKey', key, config);
+        });
+      }
+    });
+    setChecking(false);
   }, []);
 
   // Wyczyszczenie błędu po rozpoczęciu wpisywania
@@ -70,6 +87,7 @@ const LoginScreen = ({navigation}) => {
 
   // Metoda sprawdzająca czy podane hasło jest prawidłowe
   const _compare = async () => {
+    setChecking(true);
     try {
       // Pobranie hasha
       const hash = await SecureStorage.getItem('@password', config);
@@ -87,8 +105,10 @@ const LoginScreen = ({navigation}) => {
           setPassword('');
         }
       });
+      setChecking(false);
     } catch (e) {
       setError(e);
+      setChecking(false);
     }
   };
 
@@ -105,14 +125,23 @@ const LoginScreen = ({navigation}) => {
                 {registered ? 'Wprowadź hasło' : 'Ustaw hasło do notatnika'}
               </Text>
               <View style={styles.inputContainer}>
-                <UIInput
-                  color={error ? colors.error : colors.primaryVariant}
-                  value={password}
-                  setValue={setPassword}
-                  secure
-                  autoFocus
-                />
-                {error ? <Text style={styles.error}>{error}</Text> : null}
+                {checking ? (
+                  <ActivityIndicator
+                    size="large"
+                    color={colors.primaryVariant}
+                  />
+                ) : (
+                  <>
+                    <UIInput
+                      color={error ? colors.error : colors.primaryVariant}
+                      value={password}
+                      setValue={setPassword}
+                      secure
+                      autoFocus
+                    />
+                    {error ? <Text style={styles.error}>{error}</Text> : null}
+                  </>
+                )}
               </View>
             </View>
             <View style={styles.lowerWrapper}>

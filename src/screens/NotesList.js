@@ -5,6 +5,7 @@ import {
   KeyboardAvoidingView,
   TextInput,
   StyleSheet,
+  ActivityIndicator,
 } from 'react-native';
 import {colors} from '../constants/colors';
 import {SafeAreaView} from 'react-navigation';
@@ -13,11 +14,17 @@ import UIButton from '../components/UIButton';
 import AsyncStorage from '@react-native-community/async-storage';
 import Icon from 'react-native-vector-icons/Ionicons';
 import {TouchableOpacity} from 'react-native-gesture-handler';
+import {encryptData, decryptData} from '../utils/encrypt';
+import SecureStorage from 'react-native-secure-storage';
+import {config} from './LoginScreen';
 
 const NotesList = ({navigation}) => {
   const [title, setTitle] = useState('Moja notatka');
   const [note, setNote] = useState('');
   const [visible, setVisible] = useState(false);
+  const [pending, setPending] = useState(true);
+
+  // Refs
   const _titleInput = useRef(null);
   const _noteInput = useRef(null);
 
@@ -25,18 +32,30 @@ const NotesList = ({navigation}) => {
 
   useEffect(() => {
     // Pobranie tytułu zapisanego w pamięci urządzenia (jeśli istnieje)
-    AsyncStorage.getItem('@title').then(savedTitle => {
+    SecureStorage.getItem('@title', config).then(savedTitle => {
       if (savedTitle) {
-        setTitle(savedTitle);
+        const data = JSON.parse(savedTitle);
+        decryptData(data.cipher, data.iv).then(decrypted => {
+          setTitle(decrypted);
+        });
+      } else {
+        setTitle('');
       }
     });
     // Pobranie treści notatki zapisanek w pamięci urządzenia
     // (jeśli istnieje)
-    AsyncStorage.getItem('@note').then(savedNote => {
+    SecureStorage.getItem('@note', config).then(savedNote => {
       if (savedNote) {
-        setNote(savedNote);
+        const data = JSON.parse(savedNote);
+        decryptData(data.cipher, data.iv).then(decrypted => {
+          setNote(decrypted);
+        });
+      } else {
+        setNote('');
       }
     });
+    // Koniec oczekiwania
+    setPending(false);
   }, []);
 
   // Metoda "czyszcząca" aktualnie aktywny input
@@ -52,11 +71,28 @@ const NotesList = ({navigation}) => {
 
   // Metoda zapisująca tytuł i treść notatki w pamięci urządzenia
   const _onSave = async () => {
+    // Oczekiwanie
+    setPending(true);
     try {
-      // Zapisanie tytułu notatki w pamięci jako @title
-      await AsyncStorage.setItem('@title', title);
-      // Zapisanie treści notatki w pamięci jako @note
-      await AsyncStorage.setItem('@note', note);
+      // Szyfrowanie tytułu
+      const encryptedTitle = await encryptData(title);
+
+      // Zapisanie zaszyfrowanego tytułu
+      await SecureStorage.setItem(
+        '@title',
+        JSON.stringify(encryptedTitle),
+        config,
+      );
+
+      // Szyfrowanie notatki
+      const encryptedNote = await encryptData(note);
+
+      // Zapisanie zaszyfrowanej notatki
+      await SecureStorage.setItem(
+        '@note',
+        JSON.stringify(encryptedNote),
+        config,
+      );
 
       // "Zamknięcie" klawiatury (unfocus aktywnego inputu)
       if (_titleInput.current.isFocused()) {
@@ -64,8 +100,14 @@ const NotesList = ({navigation}) => {
       } else if (_noteInput.current.isFocused()) {
         _noteInput.current.blur();
       }
+
+      // Koniec oczekiwania
+      setPending(false);
     } catch (err) {
       console.log(err);
+
+      // Koniec oczekiwania
+      setPending(false);
     }
   };
 
@@ -80,43 +122,50 @@ const NotesList = ({navigation}) => {
             <Icon name="ios-settings" size={6 * vh} color={colors.secondary} />
           </TouchableOpacity>
         </View>
-        <View style={styles.noteContainer}>
-          <TextInput
-            ref={_titleInput}
-            style={styles.titleInput}
-            value={title}
-            onChangeText={setTitle}
-            fontSize={5 * vh}
-            onFocus={() => setVisible(true)}
-            onBlur={() => setVisible(false)}
-          />
-          <TextInput
-            ref={_noteInput}
-            style={styles.noteInput}
-            value={note}
-            onChangeText={setNote}
-            fontSize={3 * vh}
-            multiline
-            onFocus={() => setVisible(true)}
-            onBlur={() => setVisible(false)}
-          />
-          {visible ? (
-            <View style={styles.buttonsContainer}>
-              <UIButton
-                color={colors.error}
-                label="Wyczyść"
-                onPress={_onClear}
-                style={styles.leftButton}
-              />
-              <UIButton
-                color={colors.primaryVariant}
-                label="Zapisz"
-                onPress={_onSave}
-                style={styles.rightButton}
-              />
-            </View>
-          ) : null}
-        </View>
+        {pending ? (
+          <ActivityIndicator size="large" color={colors.primaryVariant} />
+        ) : (
+          <View style={styles.noteContainer}>
+            <TextInput
+              ref={_titleInput}
+              style={styles.titleInput}
+              value={title}
+              onChangeText={setTitle}
+              fontSize={5 * vh}
+              onFocus={() => setVisible(true)}
+              onBlur={() => setVisible(false)}
+              placeholder="Tytuł"
+            />
+            <TextInput
+              ref={_noteInput}
+              style={styles.noteInput}
+              value={note}
+              onChangeText={setNote}
+              fontSize={3 * vh}
+              multiline
+              onFocus={() => setVisible(true)}
+              onBlur={() => setVisible(false)}
+              placeholder="Wprowadź notatkę..."
+              placeholderTextColor="#bbb"
+            />
+            {visible ? (
+              <View style={styles.buttonsContainer}>
+                <UIButton
+                  color={colors.error}
+                  label="Wyczyść"
+                  onPress={_onClear}
+                  style={styles.leftButton}
+                />
+                <UIButton
+                  color={colors.primaryVariant}
+                  label="Zapisz"
+                  onPress={_onSave}
+                  style={styles.rightButton}
+                />
+              </View>
+            ) : null}
+          </View>
+        )}
       </KeyboardAvoidingView>
     </SafeAreaView>
   );
