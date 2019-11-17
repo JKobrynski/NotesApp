@@ -17,6 +17,7 @@ import UIButton from '../components/UIButton';
 import bcrypt from 'react-native-bcrypt';
 import {config} from './LoginScreen';
 import SecureStorage from 'react-native-secure-storage';
+import {resaveNote} from '../utils/storage';
 
 const SettingsScreen = ({navigation}) => {
   const [previous, setPrevious] = useState('');
@@ -86,18 +87,40 @@ const SettingsScreen = ({navigation}) => {
   // Metoda zapisująca nowe hasło w pamięci urządzenia
   const _updatePassword = () => {
     setPending(true);
-    bcrypt.hash(updated, 10, async (err, hash) => {
+    bcrypt.genSalt(12, (err, salt) => {
       if (err) {
         setError(err);
+      } else {
+        bcrypt.hash(updated, salt, async (err, hash) => {
+          if (err) {
+            setError(err);
+          }
+          try {
+            // Zapisanie hasha
+            await SecureStorage.setItem('@password', hash, config);
+            // CRUCIAL
+            await resaveNote(previous, updated);
+            setSuccess(true);
+          } catch (e) {
+            setError(e);
+          } finally {
+            setPending(false);
+          }
+        });
       }
-      try {
-        await SecureStorage.setItem('@password', hash, config);
-        setSuccess(true);
-      } catch (e) {
-        setError(e);
-      }
-      setPending(false);
     });
+    // bcrypt.hash(updated, 10, async (err, hash) => {
+    //   if (err) {
+    //     setError(err);
+    //   }
+    //   try {
+    //     await SecureStorage.setItem('@password', hash, config);
+    //     setSuccess(true);
+    //   } catch (e) {
+    //     setError(e);
+    //   }
+    //   setPending(false);
+    // });
   };
 
   return (
@@ -111,7 +134,7 @@ const SettingsScreen = ({navigation}) => {
             <View style={styles.header}>
               <TouchableOpacity
                 style={styles.backButton}
-                onPress={() => navigation.navigate('List')}>
+                onPress={() => navigation.navigate('Login')}>
                 <Icon name="ios-arrow-back" color="#fff" size={5 * vh} />
               </TouchableOpacity>
             </View>

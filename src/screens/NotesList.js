@@ -6,7 +6,6 @@ import {
   TextInput,
   StyleSheet,
   ActivityIndicator,
-  NativeModules,
 } from 'react-native';
 import {colors} from '../constants/colors';
 import {SafeAreaView} from 'react-navigation';
@@ -14,9 +13,7 @@ import {vh, vw} from '../constants/sheet';
 import UIButton from '../components/UIButton';
 import Icon from 'react-native-vector-icons/Ionicons';
 import {TouchableOpacity} from 'react-native-gesture-handler';
-import {encryptData, decryptData} from '../utils/encrypt';
-import SecureStorage from 'react-native-secure-storage';
-import {config} from './LoginScreen';
+import {readFromStorage, saveToStorage} from '../utils/storage';
 
 const NotesList = ({navigation}) => {
   const [title, setTitle] = useState('Moja notatka');
@@ -33,24 +30,18 @@ const NotesList = ({navigation}) => {
   useEffect(() => {
     console.log(navigation.state.params.password);
     // Pobranie tytułu zapisanego w pamięci urządzenia (jeśli istnieje)
-    SecureStorage.getItem('@title', config).then(savedTitle => {
-      if (savedTitle) {
-        const data = JSON.parse(savedTitle);
-        decryptData(data, navigation.state.params.password).then(decrypted => {
-          setTitle(decrypted);
-        });
+    readFromStorage('@title', navigation.state.params.password).then(title => {
+      if (title) {
+        setTitle(title);
       } else {
         setTitle('');
       }
     });
     // Pobranie treści notatki zapisanek w pamięci urządzenia
     // (jeśli istnieje)
-    SecureStorage.getItem('@note', config).then(savedNote => {
-      if (savedNote) {
-        const data = JSON.parse(savedNote);
-        decryptData(data, navigation.state.params.password).then(decrypted => {
-          setNote(decrypted);
-        });
+    readFromStorage('@note', navigation.state.params.password).then(note => {
+      if (note) {
+        setNote(note);
       } else {
         setNote('');
       }
@@ -75,35 +66,9 @@ const NotesList = ({navigation}) => {
     // Oczekiwanie
     setPending(true);
     try {
-      // Szyfrowanie tytułu
-      const encryptedTitle = await encryptData(
-        title,
-        navigation.state.params.password,
-      );
-
-      // Zapisanie zaszyfrowanego tytułu
-      await SecureStorage.setItem(
-        '@title',
-        JSON.stringify(encryptedTitle),
-        config,
-      );
-
-      // Szyfrowanie notatki
-      const encryptedNote = await encryptData(
-        note,
-        navigation.state.params.password,
-      );
-
-      // Zapisanie zaszyfrowanej notatki
-      await SecureStorage.setItem(
-        '@note',
-        JSON.stringify(encryptedNote),
-        config,
-      );
-
-      // "Zamknięcie" klawiatury (unfocus aktywnego inputu)
-      // _titleInput.current.blur();
-      // _noteInput.current.blur();
+      // Szyfrowanie i zapisanie notatki i tytułu
+      await saveToStorage('@title', title, navigation.state.params.password);
+      await saveToStorage('@note', note, navigation.state.params.password);
 
       // Koniec oczekiwania
       setPending(false);

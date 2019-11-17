@@ -71,7 +71,7 @@ const LoginScreen = ({navigation}) => {
       if (err) {
         setError(err);
       } else {
-        bcrypt.hash(password, 10, async (err, hash) => {
+        bcrypt.hash(password, salt, async (err, hash) => {
           if (err) {
             setError(err);
           }
