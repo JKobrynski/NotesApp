@@ -6,12 +6,12 @@ import {
   TextInput,
   StyleSheet,
   ActivityIndicator,
+  NativeModules,
 } from 'react-native';
 import {colors} from '../constants/colors';
 import {SafeAreaView} from 'react-navigation';
 import {vh, vw} from '../constants/sheet';
 import UIButton from '../components/UIButton';
-import AsyncStorage from '@react-native-community/async-storage';
 import Icon from 'react-native-vector-icons/Ionicons';
 import {TouchableOpacity} from 'react-native-gesture-handler';
 import {encryptData, decryptData} from '../utils/encrypt';
@@ -31,11 +31,12 @@ const NotesList = ({navigation}) => {
   const keyboardVerticalOffset = Platform.OS === 'ios' ? 40 : 0;
 
   useEffect(() => {
+    console.log(navigation.state.params.password);
     // Pobranie tytułu zapisanego w pamięci urządzenia (jeśli istnieje)
     SecureStorage.getItem('@title', config).then(savedTitle => {
       if (savedTitle) {
         const data = JSON.parse(savedTitle);
-        decryptData(data.cipher, data.iv).then(decrypted => {
+        decryptData(data, navigation.state.params.password).then(decrypted => {
           setTitle(decrypted);
         });
       } else {
@@ -47,7 +48,7 @@ const NotesList = ({navigation}) => {
     SecureStorage.getItem('@note', config).then(savedNote => {
       if (savedNote) {
         const data = JSON.parse(savedNote);
-        decryptData(data.cipher, data.iv).then(decrypted => {
+        decryptData(data, navigation.state.params.password).then(decrypted => {
           setNote(decrypted);
         });
       } else {
@@ -75,7 +76,10 @@ const NotesList = ({navigation}) => {
     setPending(true);
     try {
       // Szyfrowanie tytułu
-      const encryptedTitle = await encryptData(title);
+      const encryptedTitle = await encryptData(
+        title,
+        navigation.state.params.password,
+      );
 
       // Zapisanie zaszyfrowanego tytułu
       await SecureStorage.setItem(
@@ -85,7 +89,10 @@ const NotesList = ({navigation}) => {
       );
 
       // Szyfrowanie notatki
-      const encryptedNote = await encryptData(note);
+      const encryptedNote = await encryptData(
+        note,
+        navigation.state.params.password,
+      );
 
       // Zapisanie zaszyfrowanej notatki
       await SecureStorage.setItem(
@@ -95,14 +102,12 @@ const NotesList = ({navigation}) => {
       );
 
       // "Zamknięcie" klawiatury (unfocus aktywnego inputu)
-      if (_titleInput.current.isFocused()) {
-        _titleInput.current.blur();
-      } else if (_noteInput.current.isFocused()) {
-        _noteInput.current.blur();
-      }
+      // _titleInput.current.blur();
+      // _noteInput.current.blur();
 
       // Koniec oczekiwania
       setPending(false);
+      setVisible(false);
     } catch (err) {
       console.log(err);
 

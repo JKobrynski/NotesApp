@@ -6,6 +6,7 @@ import {
   Platform,
   TouchableOpacity,
   StyleSheet,
+  ActivityIndicator,
 } from 'react-native';
 import {SafeAreaView} from 'react-navigation';
 import {colors} from '../constants/colors';
@@ -24,6 +25,7 @@ const SettingsScreen = ({navigation}) => {
   const [success, setSuccess] = useState(false);
   const [error, setError] = useState('');
   const [visible, setVisible] = useState(true);
+  const [pending, setPending] = useState(false);
 
   const _saved = useRef(null);
   const _updated = useRef(null);
@@ -57,6 +59,7 @@ const SettingsScreen = ({navigation}) => {
 
   // Metoda porównująca wpisane hasło z zapisanym
   const _checkPassword = async () => {
+    setPending(true);
     try {
       // Pobranie hasła z pamięci urządzenia
       // const savedPassword = await AsyncStorage.getItem('@password');
@@ -73,13 +76,16 @@ const SettingsScreen = ({navigation}) => {
           setPrevious('');
         }
       });
+      setPending(false);
     } catch (err) {
       setError(err);
+      setPending(false);
     }
   };
 
   // Metoda zapisująca nowe hasło w pamięci urządzenia
   const _updatePassword = () => {
+    setPending(true);
     bcrypt.hash(updated, 10, async (err, hash) => {
       if (err) {
         setError(err);
@@ -90,6 +96,7 @@ const SettingsScreen = ({navigation}) => {
       } catch (e) {
         setError(e);
       }
+      setPending(false);
     });
   };
 
@@ -163,6 +170,13 @@ const SettingsScreen = ({navigation}) => {
                   blurOnSubmit={false}
                 />
               )}
+              {pending ? (
+                <ActivityIndicator
+                  size="large"
+                  color={colors.primaryVariant}
+                  style={{marginTop: 2 * vh}}
+                />
+              ) : null}
               {error ? <Text style={styles.error}>{error}</Text> : null}
             </View>
           )}

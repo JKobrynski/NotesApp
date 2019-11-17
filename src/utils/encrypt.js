@@ -1,7 +1,5 @@
 import {NativeModules, Platform} from 'react-native';
 const Aes = NativeModules.Aes;
-import SecureStorage from 'react-native-secure-storage';
-import {config} from '../screens/LoginScreen';
 
 export const genRandomKey = () => Aes.randomKey(32);
 
@@ -20,10 +18,12 @@ export const encrypt = (text, key) => {
 export const decrypt = (encryptedData, key) =>
   Aes.decrypt(encryptedData.cipher, key, encryptedData.iv);
 
-export const encryptData = async text => {
+export const encryptData = async (text, myKey) => {
   try {
-    const secret = await SecureStorage.getItem('@encryptionKey', config);
-    const key = await generateKey(secret, 'salt', 5000, 512);
+    const secret = await Aes.sha256(myKey);
+    const salt = await Aes.hmac256(myKey, secret);
+
+    const key = await generateKey(secret, salt, 5000, 512);
     const {cipher, iv} = await encrypt(text, key);
 
     return {cipher, iv};
@@ -32,11 +32,13 @@ export const encryptData = async text => {
   }
 };
 
-export const decryptData = async (cipher, iv) => {
+export const decryptData = async (data, myKey) => {
   try {
-    const secret = await SecureStorage.getItem('@encryptionKey', config);
-    const key = await generateKey(secret, 'salt', 5000, 512);
-    const text = await decrypt({cipher, iv}, key);
+    const secret = await Aes.sha256(myKey);
+    const salt = await Aes.hmac256(myKey, secret);
+
+    const key = await generateKey(secret, salt, 5000, 512);
+    const text = await decrypt(data, key);
 
     return text;
   } catch (e) {

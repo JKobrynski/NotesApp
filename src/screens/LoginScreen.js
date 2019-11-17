@@ -6,7 +6,9 @@ import {
   StyleSheet,
   ActivityIndicator,
   Platform,
+  NativeModules,
 } from 'react-native';
+const Aes = NativeModules.Aes;
 import {colors} from '../constants/colors';
 import {SafeAreaView} from 'react-navigation';
 import UIInput from '../components/UIInput';
@@ -19,7 +21,7 @@ import SecureStorage, {
   ACCESS_CONTROL,
   AUTHENTICATION_TYPE,
 } from 'react-native-secure-storage';
-import {genRandomKey} from '../utils/encrypt';
+import {genRandomKey, encryptData, decryptData} from '../utils/encrypt';
 
 export const config = {
   // accessControl: ACCESS_CONTROL.BIOMETRY_ANY_OR_DEVICE_PASSCODE,
@@ -51,13 +53,7 @@ const LoginScreen = ({navigation}) => {
         setRegistered(true);
       }
     });
-    SecureStorage.getItem('@encryptionKey', config).then(key => {
-      if (!key) {
-        genRandomKey().then(key => {
-          SecureStorage.setItem('@encryptionKey', key, config);
-        });
-      }
-    });
+
     setChecking(false);
   }, []);
 
@@ -71,16 +67,22 @@ const LoginScreen = ({navigation}) => {
   // Metoda zapisująca hasło
   const _setPassword = () => {
     // Hashowanie hasła
-    bcrypt.hash(password, 10, async (err, hash) => {
+    bcrypt.genSalt(12, (err, salt) => {
       if (err) {
         setError(err);
-      }
-      try {
-        // Zapisanie hasha
-        await SecureStorage.setItem('@password', hash, config);
-        navigation.navigate('List');
-      } catch (e) {
-        setError(e);
+      } else {
+        bcrypt.hash(password, 10, async (err, hash) => {
+          if (err) {
+            setError(err);
+          }
+          try {
+            // Zapisanie hasha
+            await SecureStorage.setItem('@password', hash, config);
+            navigation.navigate('List', {password});
+          } catch (e) {
+            setError(e);
+          }
+        });
       }
     });
   };
@@ -99,7 +101,7 @@ const LoginScreen = ({navigation}) => {
         }
         if (matched) {
           // Przekierowanie gdy hasło prawidłowe
-          navigation.navigate('List');
+          navigation.navigate('List', {password});
         } else {
           setError('Hasło nieprawidłowe');
           setPassword('');
