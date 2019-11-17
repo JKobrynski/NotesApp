@@ -18,6 +18,7 @@ import bcrypt from 'react-native-bcrypt';
 import {config} from './LoginScreen';
 import SecureStorage from 'react-native-secure-storage';
 import {resaveNote} from '../utils/storage';
+import {isValidPassword} from '../utils/validate';
 
 const SettingsScreen = ({navigation}) => {
   const [previous, setPrevious] = useState('');
@@ -37,6 +38,13 @@ const SettingsScreen = ({navigation}) => {
       setError('');
     }
   }, [previous]);
+
+  // Usuwanie błędu jeśli hasło jest ponownie wprowadzane
+  useEffect(() => {
+    if (error && updated.length > 0) {
+      setError('');
+    }
+  }, [updated]);
 
   // Działanie po udanej zmianie hasła
   useEffect(() => {
@@ -63,9 +71,9 @@ const SettingsScreen = ({navigation}) => {
     setPending(true);
     try {
       // Pobranie hasła z pamięci urządzenia
-      // const savedPassword = await AsyncStorage.getItem('@password');
       const savedPassword = await SecureStorage.getItem('@password', config);
 
+      // Porównanie zapisanego hasła z zapisanym hasłem
       bcrypt.compare(previous, savedPassword, (err, matched) => {
         if (err) {
           setError(err);
@@ -77,9 +85,9 @@ const SettingsScreen = ({navigation}) => {
           setPrevious('');
         }
       });
-      setPending(false);
     } catch (err) {
-      setError(err);
+      setError('Wystąpił błąd podczas odczytu danych');
+    } finally {
       setPending(false);
     }
   };
@@ -87,40 +95,38 @@ const SettingsScreen = ({navigation}) => {
   // Metoda zapisująca nowe hasło w pamięci urządzenia
   const _updatePassword = () => {
     setPending(true);
-    bcrypt.genSalt(12, (err, salt) => {
-      if (err) {
-        setError(err);
-      } else {
-        bcrypt.hash(updated, salt, async (err, hash) => {
-          if (err) {
-            setError(err);
-          }
-          try {
-            // Zapisanie hasha
-            await SecureStorage.setItem('@password', hash, config);
-            // CRUCIAL
-            await resaveNote(previous, updated);
-            setSuccess(true);
-          } catch (e) {
-            setError(e);
-          } finally {
-            setPending(false);
-          }
-        });
-      }
-    });
-    // bcrypt.hash(updated, 10, async (err, hash) => {
-    //   if (err) {
-    //     setError(err);
-    //   }
-    //   try {
-    //     await SecureStorage.setItem('@password', hash, config);
-    //     setSuccess(true);
-    //   } catch (e) {
-    //     setError(e);
-    //   }
-    //   setPending(false);
-    // });
+    // Kontrola mocy hasła
+    if (!isValidPassword(updated)) {
+      setError('Hasło jest za słabe');
+      setUpdated('');
+      setPending(false);
+    } else {
+      bcrypt.genSalt(12, (err, salt) => {
+        if (err) {
+          setError(err);
+        } else {
+          bcrypt.hash(updated, salt, async (err, hash) => {
+            if (err) {
+              setError(err);
+            }
+            try {
+              // Zapisanie hasha
+              const update = SecureStorage.setItem('@password', hash, config);
+              // Ponowne zapisanie notatki
+              const resave = resaveNote(previous, updated);
+              await Promise.all([update, resave]);
+
+              setSuccess(true);
+            } catch (e) {
+              setError('Wystąpił błąd, spróbuj ponownie.');
+              setSuccess(false);
+            } finally {
+              setPending(false);
+            }
+          });
+        }
+      });
+    }
   };
 
   return (
@@ -157,22 +163,28 @@ const SettingsScreen = ({navigation}) => {
                 {correct ? 'Podaj nowe hasło' : 'Podaj obecne hasło'}
               </Text>
               {correct ? (
-                <TextInput
-                  ref={_updated}
-                  style={{
-                    borderBottomColor: success
-                      ? colors.secondary
-                      : colors.primaryVariant,
-                    ...styles.input,
-                  }}
-                  value={updated}
-                  onChangeText={setUpdated}
-                  secureTextEntry
-                  fontSize={3 * vh}
-                  color="#fff"
-                  returnKeyType="next"
-                  onSubmitEditing={_updatePassword}
-                />
+                <>
+                  <TextInput
+                    ref={_updated}
+                    style={{
+                      borderBottomColor: success
+                        ? colors.secondary
+                        : colors.primaryVariant,
+                      ...styles.input,
+                    }}
+                    value={updated}
+                    onChangeText={setUpdated}
+                    secureTextEntry
+                    fontSize={3 * vh}
+                    color="#fff"
+                    returnKeyType="next"
+                    onSubmitEditing={_updatePassword}
+                    autoFocus
+                  />
+                  <Text style={styles.info}>
+                    Przynajmniej 8 znaków, 2 duze litery i 2 cyfry
+                  </Text>
+                </>
               ) : (
                 <TextInput
                   ref={_saved}
@@ -274,6 +286,12 @@ const styles = StyleSheet.create({
   buttonContainer: {
     width: '80%',
     height: 8 * vh,
+  },
+  info: {
+    color: '#fff',
+    fontFamily: 'Montserrat-Regular',
+    fontSize: 2 * vh,
+    marginTop: 1 * vh,
   },
 });
 

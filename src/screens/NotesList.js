@@ -28,7 +28,6 @@ const NotesList = ({navigation}) => {
   const keyboardVerticalOffset = Platform.OS === 'ios' ? 40 : 0;
 
   useEffect(() => {
-    console.log(navigation.state.params.password);
     // Pobranie tytułu zapisanego w pamięci urządzenia (jeśli istnieje)
     readFromStorage('@title', navigation.state.params.password).then(title => {
       if (title) {
@@ -37,7 +36,7 @@ const NotesList = ({navigation}) => {
         setTitle('');
       }
     });
-    // Pobranie treści notatki zapisanek w pamięci urządzenia
+    // Pobranie treści notatki zapisanej w pamięci urządzenia
     // (jeśli istnieje)
     readFromStorage('@note', navigation.state.params.password).then(note => {
       if (note) {
@@ -70,13 +69,8 @@ const NotesList = ({navigation}) => {
       await saveToStorage('@title', title, navigation.state.params.password);
       await saveToStorage('@note', note, navigation.state.params.password);
 
-      // Koniec oczekiwania
-      setPending(false);
       setVisible(false);
-    } catch (err) {
-      console.log(err);
-
-      // Koniec oczekiwania
+    } finally {
       setPending(false);
     }
   };

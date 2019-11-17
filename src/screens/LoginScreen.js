@@ -6,9 +6,7 @@ import {
   StyleSheet,
   ActivityIndicator,
   Platform,
-  NativeModules,
 } from 'react-native';
-const Aes = NativeModules.Aes;
 import {colors} from '../constants/colors';
 import {SafeAreaView} from 'react-navigation';
 import UIInput from '../components/UIInput';
@@ -16,20 +14,12 @@ import UIButton from '../components/UIButton';
 import {vh} from '../constants/sheet';
 import bcrypt from 'react-native-bcrypt';
 import isaac from 'isaac';
-import SecureStorage, {
-  ACCESSIBLE,
-  ACCESS_CONTROL,
-  AUTHENTICATION_TYPE,
-} from 'react-native-secure-storage';
-import {genRandomKey, encryptData, decryptData} from '../utils/encrypt';
+import SecureStorage, {ACCESSIBLE} from 'react-native-secure-storage';
+import {isValidPassword} from '../utils/validate';
 
+// Konfiguracja keychaina
 export const config = {
-  // accessControl: ACCESS_CONTROL.BIOMETRY_ANY_OR_DEVICE_PASSCODE,
-  accessible: ACCESSIBLE.WHEN_UNLOCKED,
-  // accessControl: ACCESS_CONTROL.APPLICATION_PASSWORD,
-  // authenticationPrompt: 'auth with yourself',
-  // service: 'example',
-  // authenticateType: AUTHENTICATION_TYPE.BIOMETRICS,
+  accessible: ACCESSIBLE.WHEN_UNLOCKED_THIS_DEVICE_ONLY,
 };
 
 bcrypt.setRandomFallback(len => {
@@ -67,24 +57,30 @@ const LoginScreen = ({navigation}) => {
   // Metoda zapisująca hasło
   const _setPassword = () => {
     // Hashowanie hasła
-    bcrypt.genSalt(12, (err, salt) => {
-      if (err) {
-        setError(err);
-      } else {
-        bcrypt.hash(password, salt, async (err, hash) => {
-          if (err) {
-            setError(err);
-          }
-          try {
-            // Zapisanie hasha
-            await SecureStorage.setItem('@password', hash, config);
-            navigation.navigate('List', {password});
-          } catch (e) {
-            setError(e);
-          }
-        });
-      }
-    });
+    if (!isValidPassword(password) && !registered) {
+      // Kontrola mocy hasła
+      setError('Hasło jest za słabe');
+      setPassword('');
+    } else {
+      bcrypt.genSalt(12, (err, salt) => {
+        if (err) {
+          setError(err);
+        } else {
+          bcrypt.hash(password, salt, async (err, hash) => {
+            if (err) {
+              setError(err);
+            }
+            try {
+              // Zapisanie hasha
+              await SecureStorage.setItem('@password', hash, config);
+              navigation.navigate('List', {password});
+            } catch (e) {
+              setError(e);
+            }
+          });
+        }
+      });
+    }
   };
 
   // Metoda sprawdzająca czy podane hasło jest prawidłowe
@@ -97,7 +93,7 @@ const LoginScreen = ({navigation}) => {
       // Porównanie haseł
       bcrypt.compare(password, hash, (err, matched) => {
         if (err) {
-          setError(err);
+          setError('Wystąpił błąd, spróbuj ponownie');
         }
         if (matched) {
           // Przekierowanie gdy hasło prawidłowe
@@ -107,9 +103,9 @@ const LoginScreen = ({navigation}) => {
           setPassword('');
         }
       });
-      setChecking(false);
     } catch (e) {
       setError(e);
+    } finally {
       setChecking(false);
     }
   };
@@ -141,6 +137,11 @@ const LoginScreen = ({navigation}) => {
                       secure
                       autoFocus
                     />
+                    {registered ? null : (
+                      <Text style={styles.info}>
+                        Przynajmniej 8 znaków, 2 duze litery i 2 cyfry
+                      </Text>
+                    )}
                     {error ? <Text style={styles.error}>{error}</Text> : null}
                   </>
                 )}
@@ -199,6 +200,12 @@ const styles = StyleSheet.create({
     fontSize: 3 * vh,
     marginTop: 1 * vh,
     textAlign: 'center',
+  },
+  info: {
+    color: '#fff',
+    fontFamily: 'Montserrat-Regular',
+    fontSize: 2 * vh,
+    marginTop: 1 * vh,
   },
   lowerWrapper: {
     flex: 1,
