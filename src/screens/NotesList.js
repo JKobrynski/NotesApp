@@ -11,12 +11,11 @@ import {colors} from '../constants/colors';
 import {SafeAreaView} from 'react-navigation';
 import {vh, vw} from '../constants/sheet';
 import UIButton from '../components/UIButton';
-import Icon from 'react-native-vector-icons/Ionicons';
-import {TouchableOpacity} from 'react-native-gesture-handler';
-import {readFromStorage, saveToStorage} from '../utils/storage';
+import SecureStorage from 'react-native-secure-storage';
+import {config} from './LoginScreen';
 
 const NotesList = ({navigation}) => {
-  const [title, setTitle] = useState('Moja notatka');
+  const [title, setTitle] = useState('');
   const [note, setNote] = useState('');
   const [visible, setVisible] = useState(false);
   const [pending, setPending] = useState(true);
@@ -27,7 +26,25 @@ const NotesList = ({navigation}) => {
 
   const keyboardVerticalOffset = Platform.OS === 'ios' ? 40 : 0;
 
-  useEffect(() => {}, []);
+  useEffect(() => {
+    if (navigation.state.params) {
+      const {note} = navigation.state.params;
+      const savedNote = JSON.parse(note);
+
+      setTitle(savedNote.title);
+      setNote(savedNote.note);
+    } else {
+      setPending(false);
+    }
+  }, [navigation]);
+
+  useEffect(() => {
+    if (note || title) {
+      if (pending) {
+        setPending(false);
+      }
+    }
+  }, [note, title]);
 
   // Metoda "czyszcząca" aktualnie aktywny input
   const _onClear = () => {
@@ -42,15 +59,18 @@ const NotesList = ({navigation}) => {
 
   // Metoda zapisująca tytuł i treść notatki w pamięci urządzenia
   const _onSave = async () => {
-    // Oczekiwanie
-    setPending(true);
     try {
-      // Szyfrowanie i zapisanie notatki i tytułu
-      await saveToStorage('@title', title, navigation.state.params.password);
-      await saveToStorage('@note', note, navigation.state.params.password);
+      // Oczekiwanie
+      setPending(true);
+      // Zapisanie notatki
+      const myNote = {
+        title,
+        note,
+      };
 
-      setVisible(false);
+      await SecureStorage.setItem('@note', JSON.stringify(myNote), config);
     } finally {
+      setVisible(false);
       setPending(false);
     }
   };
@@ -61,13 +81,12 @@ const NotesList = ({navigation}) => {
         behavior={Platform.OS === 'ios' ? 'padding' : null}
         style={{flex: 1}}
         keyboardVerticalOffset={keyboardVerticalOffset}>
-        <View style={styles.header}>
-          <TouchableOpacity onPress={() => navigation.navigate('Settings')}>
-            <Icon name="ios-settings" size={6 * vh} color={colors.secondary} />
-          </TouchableOpacity>
-        </View>
         {pending ? (
-          <ActivityIndicator size="large" color={colors.primaryVariant} />
+          <ActivityIndicator
+            style={{marginTop: 4 * vh}}
+            size="large"
+            color={colors.primaryVariant}
+          />
         ) : (
           <View style={styles.noteContainer}>
             <TextInput
@@ -76,9 +95,10 @@ const NotesList = ({navigation}) => {
               value={title}
               onChangeText={setTitle}
               fontSize={5 * vh}
-              onFocus={() => setVisible(true)}
-              onBlur={() => setVisible(false)}
+              onFocus={() => !visible && setVisible(true)}
+              onBlur={() => visible && setVisible(false)}
               placeholder="Tytuł"
+              onSubmitEditing={() => _noteInput.current.focus()}
             />
             <TextInput
               ref={_noteInput}
@@ -87,8 +107,8 @@ const NotesList = ({navigation}) => {
               onChangeText={setNote}
               fontSize={3 * vh}
               multiline
-              onFocus={() => setVisible(true)}
-              onBlur={() => setVisible(false)}
+              onFocus={() => !visible && setVisible(true)}
+              onBlur={() => visible && setVisible(false)}
               placeholder="Wprowadź notatkę..."
               placeholderTextColor="#bbb"
             />
@@ -107,7 +127,20 @@ const NotesList = ({navigation}) => {
                   style={styles.rightButton}
                 />
               </View>
-            ) : null}
+            ) : (
+              <View
+                style={{
+                  width: '100%',
+                  height: 8 * vh,
+                  marginBottom: 10 * vh,
+                }}>
+                <UIButton
+                  color={colors.error}
+                  label="Wyloguj"
+                  onPress={() => navigation.navigate('Login')}
+                />
+              </View>
+            )}
           </View>
         )}
       </KeyboardAvoidingView>
@@ -132,6 +165,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingTop: 1 * vh,
     paddingHorizontal: 5 * vw,
+    marginTop: 4 * vh,
   },
   titleInput: {
     width: '100%',

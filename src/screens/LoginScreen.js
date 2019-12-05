@@ -9,7 +9,6 @@ import {
 } from 'react-native';
 import {colors} from '../constants/colors';
 import {SafeAreaView} from 'react-navigation';
-import UIInput from '../components/UIInput';
 import UIButton from '../components/UIButton';
 import {vh} from '../constants/sheet';
 import SecureStorage, {
@@ -20,7 +19,7 @@ import SecureStorage, {
 
 // Konfiguracja keychaina
 export const config = {
-  accessControl: ACCESS_CONTROL.BIOMETRY_ANY_OR_DEVICE_PASSCODE,
+  accessControl: ACCESS_CONTROL.BIOMETRY_ANY,
   accessible: ACCESSIBLE.WHEN_UNLOCKED_THIS_DEVICE_ONLY,
   authenticationType: AUTHENTICATION_TYPE.BIOMETRICS,
   authenticationPrompt: 'Czy to Ty?',
@@ -29,27 +28,24 @@ export const config = {
 
 const LoginScreen = ({navigation}) => {
   const [error, setError] = useState('');
-  const [checking, setChecking] = useState(true);
+  const [checking, setChecking] = useState(false);
 
   const keyboardVerticalOffset = Platform.OS === 'ios' ? 40 : 0;
 
-  // Sprawdzenie czy uzytkownik juz ustawił hasło
-  useEffect(() => {
-    async function checkNote() {
-      try {
-        setChecking(true);
-        const note = await SecureStorage.getItem('@note', config);
+  const _checkNote = async () => {
+    try {
+      setChecking(true);
+      const note = await SecureStorage.getItem('@note', config);
 
+      if (note) {
+        navigation.navigate('List', {note});
+      } else {
         navigation.navigate('List');
-      } catch (e) {
-        setError('Wystąpił błąd przy odczytywaniu notatki');
-      } finally {
-        setChecking(false);
       }
+    } catch (e) {
+      setError('Wystąpił błąd przy autoryzacji');
     }
-
-    checkNote();
-  }, []);
+  };
 
   return (
     <SafeAreaView style={styles.safeArea}>
@@ -62,20 +58,26 @@ const LoginScreen = ({navigation}) => {
             <View style={styles.upperContainer}>
               <Text style={styles.text}>Witaj!</Text>
               {checking ? (
-                <ActivityIndicator size="large" color={colors.primaryVariant} />
+                <ActivityIndicator
+                  style={{marginTop: 2 * vh}}
+                  size="large"
+                  color={colors.primaryVariant}
+                />
+              ) : error ? (
+                <Text style={styles.error}>{error}</Text>
               ) : (
                 <Text style={styles.textSmall}>
-                  Przejdź dalej aby zapisać notatkę
+                  Przejdź dalej aby edytować notatkę
                 </Text>
               )}
-              {error ? <Text style={styles.error}>{error}</Text> : null}
             </View>
             <View style={styles.lowerWrapper}>
               <View style={styles.buttonContainer}>
                 <UIButton
                   color={colors.primaryVariant}
                   label="Dalej"
-                  onPress={() => console.log('Dalej')}
+                  onPress={_checkNote}
+                  icon="finger-print"
                 />
               </View>
             </View>
@@ -137,7 +139,7 @@ const styles = StyleSheet.create({
     width: '100%',
     alignItems: 'center',
     justifyContent: 'center',
-    height: 7 * vh,
+    height: 8 * vh,
   },
 });
 
