@@ -12,25 +12,22 @@ import {SafeAreaView} from 'react-navigation';
 import UIInput from '../components/UIInput';
 import UIButton from '../components/UIButton';
 import {vh} from '../constants/sheet';
-import bcrypt from 'react-native-bcrypt';
-import isaac from 'isaac';
-import SecureStorage, {ACCESSIBLE} from 'react-native-secure-storage';
-import {isValidPassword} from '../utils/validate';
+import SecureStorage, {
+  ACCESSIBLE,
+  ACCESS_CONTROL,
+  AUTHENTICATION_TYPE,
+} from 'react-native-secure-storage';
 
 // Konfiguracja keychaina
 export const config = {
+  accessControl: ACCESS_CONTROL.BIOMETRY_ANY_OR_DEVICE_PASSCODE,
   accessible: ACCESSIBLE.WHEN_UNLOCKED_THIS_DEVICE_ONLY,
+  authenticationType: AUTHENTICATION_TYPE.BIOMETRICS,
+  authenticationPrompt: 'Czy to Ty?',
+  service: 'NotesApp',
 };
 
-bcrypt.setRandomFallback(len => {
-  const buf = new Uint8Array(len);
-
-  return buf.map(() => Math.floor(isaac.random() * 256));
-});
-
 const LoginScreen = ({navigation}) => {
-  const [password, setPassword] = useState('');
-  const [registered, setRegistered] = useState(false);
   const [error, setError] = useState('');
   const [checking, setChecking] = useState(true);
 
@@ -38,77 +35,21 @@ const LoginScreen = ({navigation}) => {
 
   // Sprawdzenie czy uzytkownik juz ustawił hasło
   useEffect(() => {
-    SecureStorage.getItem('@password', config).then(password => {
-      if (password) {
-        setRegistered(true);
+    async function checkNote() {
+      try {
+        setChecking(true);
+        const note = await SecureStorage.getItem('@note', config);
+
+        navigation.navigate('List');
+      } catch (e) {
+        setError('Wystąpił błąd przy odczytywaniu notatki');
+      } finally {
+        setChecking(false);
       }
-    });
+    }
 
-    setChecking(false);
+    checkNote();
   }, []);
-
-  // Wyczyszczenie błędu po rozpoczęciu wpisywania
-  useEffect(() => {
-    if (error && password.length > 0) {
-      setError('');
-    }
-  }, [password]);
-
-  // Metoda zapisująca hasło
-  const _setPassword = () => {
-    // Hashowanie hasła
-    if (!isValidPassword(password) && !registered) {
-      // Kontrola mocy hasła
-      setError('Hasło jest za słabe');
-      setPassword('');
-    } else {
-      bcrypt.genSalt(12, (err, salt) => {
-        if (err) {
-          setError(err);
-        } else {
-          bcrypt.hash(password, salt, async (err, hash) => {
-            if (err) {
-              setError(err);
-            }
-            try {
-              // Zapisanie hasha
-              await SecureStorage.setItem('@password', hash, config);
-              navigation.navigate('List', {password});
-            } catch (e) {
-              setError(e);
-            }
-          });
-        }
-      });
-    }
-  };
-
-  // Metoda sprawdzająca czy podane hasło jest prawidłowe
-  const _compare = async () => {
-    setChecking(true);
-    try {
-      // Pobranie hasha
-      const hash = await SecureStorage.getItem('@password', config);
-
-      // Porównanie haseł
-      bcrypt.compare(password, hash, (err, matched) => {
-        if (err) {
-          setError('Wystąpił błąd, spróbuj ponownie');
-        }
-        if (matched) {
-          // Przekierowanie gdy hasło prawidłowe
-          navigation.navigate('List', {password});
-        } else {
-          setError('Hasło nieprawidłowe');
-          setPassword('');
-        }
-      });
-    } catch (e) {
-      setError(e);
-    } finally {
-      setChecking(false);
-    }
-  };
 
   return (
     <SafeAreaView style={styles.safeArea}>
@@ -119,40 +60,22 @@ const LoginScreen = ({navigation}) => {
         <View style={styles.container}>
           <View style={styles.contentWrapper}>
             <View style={styles.upperContainer}>
-              <Text style={styles.text}>
-                {registered ? 'Wprowadź hasło' : 'Ustaw hasło do notatnika'}
-              </Text>
-              <View style={styles.inputContainer}>
-                {checking ? (
-                  <ActivityIndicator
-                    size="large"
-                    color={colors.primaryVariant}
-                  />
-                ) : (
-                  <>
-                    <UIInput
-                      color={error ? colors.error : colors.primaryVariant}
-                      value={password}
-                      setValue={setPassword}
-                      secure
-                      autoFocus
-                    />
-                    {registered ? null : (
-                      <Text style={styles.info}>
-                        Przynajmniej 8 znaków, 2 duze litery i 2 cyfry
-                      </Text>
-                    )}
-                    {error ? <Text style={styles.error}>{error}</Text> : null}
-                  </>
-                )}
-              </View>
+              <Text style={styles.text}>Witaj!</Text>
+              {checking ? (
+                <ActivityIndicator size="large" color={colors.primaryVariant} />
+              ) : (
+                <Text style={styles.textSmall}>
+                  Przejdź dalej aby zapisać notatkę
+                </Text>
+              )}
+              {error ? <Text style={styles.error}>{error}</Text> : null}
             </View>
             <View style={styles.lowerWrapper}>
               <View style={styles.buttonContainer}>
                 <UIButton
                   color={colors.primaryVariant}
                   label="Dalej"
-                  onPress={registered ? _compare : _setPassword}
+                  onPress={() => console.log('Dalej')}
                 />
               </View>
             </View>
@@ -185,13 +108,17 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   text: {
-    fontSize: 22,
+    fontSize: 28,
     fontWeight: '600',
     color: colors.onBackground,
     fontFamily: 'Montserrat-Bold',
   },
-  inputContainer: {
-    width: '100%',
+  textSmall: {
+    fontSize: 20,
+    fontWeight: '500',
+    color: colors.onBackground,
+    fontFamily: 'Montserrat-Regular',
+    textAlign: 'center',
     marginTop: 30,
   },
   error: {
@@ -200,12 +127,6 @@ const styles = StyleSheet.create({
     fontSize: 3 * vh,
     marginTop: 1 * vh,
     textAlign: 'center',
-  },
-  info: {
-    color: '#fff',
-    fontFamily: 'Montserrat-Regular',
-    fontSize: 2 * vh,
-    marginTop: 1 * vh,
   },
   lowerWrapper: {
     flex: 1,

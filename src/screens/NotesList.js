@@ -27,27 +27,7 @@ const NotesList = ({navigation}) => {
 
   const keyboardVerticalOffset = Platform.OS === 'ios' ? 40 : 0;
 
-  useEffect(() => {
-    // Pobranie tytułu zapisanego w pamięci urządzenia (jeśli istnieje)
-    readFromStorage('@title', navigation.state.params.password).then(title => {
-      if (title) {
-        setTitle(title);
-      } else {
-        setTitle('');
-      }
-    });
-    // Pobranie treści notatki zapisanej w pamięci urządzenia
-    // (jeśli istnieje)
-    readFromStorage('@note', navigation.state.params.password).then(note => {
-      if (note) {
-        setNote(note);
-      } else {
-        setNote('');
-      }
-    });
-    // Koniec oczekiwania
-    setPending(false);
-  }, []);
+  useEffect(() => {}, []);
 
   // Metoda "czyszcząca" aktualnie aktywny input
   const _onClear = () => {
