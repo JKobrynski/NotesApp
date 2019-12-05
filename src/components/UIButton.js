@@ -1,5 +1,6 @@
 import React from 'react';
 import {Text, TouchableOpacity, StyleSheet} from 'react-native';
+import Icon from 'react-native-vector-icons/Ionicons';
 
 const styles = StyleSheet.create({
   container: {
@@ -8,6 +9,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     borderRadius: 25,
     flex: 1,
+    flexDirection: 'row',
   },
   label: {
     fontWeight: '500',
@@ -20,7 +22,7 @@ const styles = StyleSheet.create({
 });
 
 // Uniwersalny komponent przycisku
-const UIButton = ({color, style, label, onPress}) => {
+const UIButton = ({color, style, label, onPress, icon}) => {
   return (
     <TouchableOpacity
       style={{
@@ -29,6 +31,14 @@ const UIButton = ({color, style, label, onPress}) => {
         ...style,
       }}
       onPress={onPress}>
+      {icon && (
+        <Icon
+          name={`ios-${icon}`}
+          style={{marginRight: 10}}
+          size={28}
+          color="#fff"
+        />
+      )}
       <Text style={styles.label}>{label}</Text>
     </TouchableOpacity>
   );
