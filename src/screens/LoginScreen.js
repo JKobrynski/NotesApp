@@ -10,12 +10,13 @@ import {
 import {colors} from '../constants/colors';
 import {SafeAreaView} from 'react-navigation';
 import UIButton from '../components/UIButton';
-import {vh} from '../constants/sheet';
+import {vh, vw} from '../constants/sheet';
 import SecureStorage, {
   ACCESSIBLE,
   ACCESS_CONTROL,
   AUTHENTICATION_TYPE,
 } from 'react-native-secure-storage';
+import UIInput from '../components/UIInput';
 
 // Konfiguracja keychaina
 export const config = {
@@ -29,6 +30,8 @@ export const config = {
 const LoginScreen = ({navigation}) => {
   const [error, setError] = useState('');
   const [checking, setChecking] = useState(false);
+  const [passwordVariant, setPasswordVariant] = useState(false);
+  const [password, setPassword] = useState('');
 
   const keyboardVerticalOffset = Platform.OS === 'ios' ? 40 : 0;
 
@@ -47,6 +50,14 @@ const LoginScreen = ({navigation}) => {
     }
   };
 
+  const _onPasswordVariant = () => {
+    setPasswordVariant(true);
+  };
+
+  const _checkPassword = () => {
+    console.log('Password');
+  };
+
   return (
     <SafeAreaView style={styles.safeArea}>
       <KeyboardAvoidingView
@@ -63,8 +74,18 @@ const LoginScreen = ({navigation}) => {
                   size="large"
                   color={colors.primaryVariant}
                 />
-              ) : error ? (
-                <Text style={styles.error}>{error}</Text>
+              ) : passwordVariant ? (
+                <>
+                  <UIInput
+                    color={error ? colors.error : colors.primaryVariant}
+                    value={password}
+                    setValue={setPassword}
+                    secure
+                    autoFocus
+                    style={{marginTop: 6 * vw}}
+                  />
+                  {error ? <Text style={styles.error}>{error}</Text> : null}
+                </>
               ) : (
                 <Text style={styles.textSmall}>
                   Przejdź dalej aby edytować notatkę
@@ -72,10 +93,20 @@ const LoginScreen = ({navigation}) => {
               )}
             </View>
             <View style={styles.lowerWrapper}>
+              <View style={{...styles.buttonContainer, marginBottom: 6 * vw}}>
+                <UIButton
+                  color={colors.secondary}
+                  label={passwordVariant ? 'Dalej' : 'Hasło'}
+                  onPress={
+                    passwordVariant ? _checkPassword : _onPasswordVariant
+                  }
+                  icon={passwordVariant ? undefined : 'lock'}
+                />
+              </View>
               <View style={styles.buttonContainer}>
                 <UIButton
                   color={colors.primaryVariant}
-                  label="Dalej"
+                  label="Odcisk palca"
                   onPress={_checkNote}
                   icon="finger-print"
                 />
