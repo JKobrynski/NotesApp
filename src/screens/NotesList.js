@@ -6,6 +6,7 @@ import {
   TextInput,
   StyleSheet,
   ActivityIndicator,
+  TouchableOpacity,
 } from 'react-native';
 import {colors} from '../constants/colors';
 import {SafeAreaView} from 'react-navigation';
@@ -13,6 +14,7 @@ import {vh, vw} from '../constants/sheet';
 import UIButton from '../components/UIButton';
 import SecureStorage from 'react-native-secure-storage';
 import {config, passwordConfig} from './LoginScreen';
+import Icon from 'react-native-vector-icons/Ionicons';
 
 const NotesList = ({navigation}) => {
   const [title, setTitle] = useState('');
@@ -86,6 +88,11 @@ const NotesList = ({navigation}) => {
         behavior={Platform.OS === 'ios' ? 'padding' : null}
         style={{flex: 1}}
         keyboardVerticalOffset={keyboardVerticalOffset}>
+        <View style={styles.header}>
+          <TouchableOpacity onPress={() => navigation.navigate('Settings')}>
+            <Icon name="ios-settings" size={6 * vh} color={colors.secondary} />
+          </TouchableOpacity>
+        </View>
         {pending ? (
           <ActivityIndicator
             style={{marginTop: 8 * vh}}
@@ -197,6 +204,13 @@ const styles = StyleSheet.create({
   },
   rightButton: {
     marginLeft: 2 * vw,
+  },
+  header: {
+    width: '100%',
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    paddingTop: 2 * vh,
+    paddingHorizontal: 3 * vw,
   },
 });
 
