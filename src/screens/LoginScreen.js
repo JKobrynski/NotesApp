@@ -27,35 +27,50 @@ export const config = {
   service: 'NotesApp',
 };
 
+export const passwordConfig = {
+  accessControl: ACCESS_CONTROL.APPLICATION_PASSWORD,
+  accessible: ACCESSIBLE.WHEN_UNLOCKED_THIS_DEVICE_ONLY,
+  //authenticationType: AUTHENTICATION_TYPE.BIOMETRICS,
+  authenticationPrompt: 'Czy to Ty?',
+  service: 'NotesApp',
+};
+
 const LoginScreen = ({navigation}) => {
   const [error, setError] = useState('');
   const [checking, setChecking] = useState(false);
-  const [passwordVariant, setPasswordVariant] = useState(false);
-  const [password, setPassword] = useState('');
 
   const keyboardVerticalOffset = Platform.OS === 'ios' ? 40 : 0;
 
-  const _checkNote = async () => {
+  const _checkFingerprint = async () => {
     try {
       setChecking(true);
-      const note = await SecureStorage.getItem('@note', config);
+      const note = await SecureStorage.getItem('@note1', config);
 
       if (note) {
         navigation.navigate('List', {note});
       } else {
         navigation.navigate('List');
+        console.log('NO NOTE');
       }
     } catch (e) {
-      setError('Wystąpił błąd przy autoryzacji');
+      setError('Wystąpił błąd przy uwierzytelnianiu');
     }
   };
 
-  const _onPasswordVariant = () => {
-    setPasswordVariant(true);
-  };
+  const _checkPassword = async () => {
+    try {
+      setChecking(true);
+      const note = await SecureStorage.getItem('@note2', passwordConfig);
 
-  const _checkPassword = () => {
-    console.log('Password');
+      if (note) {
+        navigation.navigate('List', {note});
+      } else {
+        navigation.navigate('List');
+        console.log('NO NOTE');
+      }
+    } catch (e) {
+      setError('Wystąpił błąd przy uwierzytelnianiu');
+    }
   };
 
   return (
@@ -74,18 +89,8 @@ const LoginScreen = ({navigation}) => {
                   size="large"
                   color={colors.primaryVariant}
                 />
-              ) : passwordVariant ? (
-                <>
-                  <UIInput
-                    color={error ? colors.error : colors.primaryVariant}
-                    value={password}
-                    setValue={setPassword}
-                    secure
-                    autoFocus
-                    style={{marginTop: 6 * vw}}
-                  />
-                  {error ? <Text style={styles.error}>{error}</Text> : null}
-                </>
+              ) : error ? (
+                <Text style={styles.error}>{error}</Text>
               ) : (
                 <Text style={styles.textSmall}>
                   Przejdź dalej aby edytować notatkę
@@ -96,18 +101,16 @@ const LoginScreen = ({navigation}) => {
               <View style={{...styles.buttonContainer, marginBottom: 6 * vw}}>
                 <UIButton
                   color={colors.secondary}
-                  label={passwordVariant ? 'Dalej' : 'Hasło'}
-                  onPress={
-                    passwordVariant ? _checkPassword : _onPasswordVariant
-                  }
-                  icon={passwordVariant ? undefined : 'lock'}
+                  label={'Hasło'}
+                  onPress={_checkPassword}
+                  icon={'lock'}
                 />
               </View>
               <View style={styles.buttonContainer}>
                 <UIButton
                   color={colors.primaryVariant}
                   label="Odcisk palca"
-                  onPress={_checkNote}
+                  onPress={_checkFingerprint}
                   icon="finger-print"
                 />
               </View>

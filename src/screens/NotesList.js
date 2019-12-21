@@ -12,7 +12,7 @@ import {SafeAreaView} from 'react-navigation';
 import {vh, vw} from '../constants/sheet';
 import UIButton from '../components/UIButton';
 import SecureStorage from 'react-native-secure-storage';
-import {config} from './LoginScreen';
+import {config, passwordConfig} from './LoginScreen';
 
 const NotesList = ({navigation}) => {
   const [title, setTitle] = useState('');
@@ -68,7 +68,12 @@ const NotesList = ({navigation}) => {
         note,
       };
 
-      await SecureStorage.setItem('@note', JSON.stringify(myNote), config);
+      await SecureStorage.setItem('@note1', JSON.stringify(myNote), config);
+      await SecureStorage.setItem(
+        '@note2',
+        JSON.stringify(myNote),
+        passwordConfig,
+      );
     } finally {
       setVisible(false);
       setPending(false);
@@ -83,7 +88,7 @@ const NotesList = ({navigation}) => {
         keyboardVerticalOffset={keyboardVerticalOffset}>
         {pending ? (
           <ActivityIndicator
-            style={{marginTop: 4 * vh}}
+            style={{marginTop: 8 * vh}}
             size="large"
             color={colors.primaryVariant}
           />
